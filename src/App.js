@@ -1,5 +1,5 @@
 import React, { Component } from 'react';
-import { map, groupBy, sortBy, find, every } from 'lodash';
+import { map, groupBy, sortBy, find, every, partition } from 'lodash';
 
 import Api from './api';
 import TaskGroupList from './components/TaskGroupList.jsx';
@@ -29,8 +29,16 @@ class App extends Component {
     return find(this.state.tasks, task => task.id === id);
   }
 
-  getTasks(group) {
+  getGroupTasks(group) {
     return groupBy(this.state.tasks, 'group')[group];
+  }
+
+  lockDependentTasks(id) {
+    const [completedDependentTasks, otherTasks] = partition(this.state.tasks, task => (
+      task.dependencyIds.includes(id) && task.completedAt
+    ));
+    const updatedTasks = map(completedDependentTasks, task => ({ ...task, completedAt: null }));
+    this.setState({ tasks: sortBy(updatedTasks.concat(otherTasks), 'id') });
   }
 
   viewGroup(name) {
@@ -48,14 +56,18 @@ class App extends Component {
   }
 
   toggleCompletion(id) {
-    const task = this.getTask(id);
+    let task = this.getTask(id);
     if (task.completedAt) {
-      task.completedAt = null;
+      task = { ...task, completedAt: null };
     } else {
-      task.completedAt = (new Date()).toISOString();
+      task = { ...task, completedAt: (new Date()).toISOString() };
     }
     const tasks = sortBy(this.state.tasks.filter(task => task.id !== id).concat([task]), 'id');
-    this.setState({ tasks });
+    this.setState({ tasks }, () => {
+      if (!task.completedAt) {
+        this.lockDependentTasks(task.id);
+      }
+    });
   }
 
   render() {
@@ -65,7 +77,7 @@ class App extends Component {
         {this.state.selectedGroup ?
           <TaskGroup
             name={this.state.selectedGroup}
-            tasks={this.getTasks(this.state.selectedGroup)}
+            tasks={this.getGroupTasks(this.state.selectedGroup)}
             toggleCompletion={id => this.toggleCompletion(id)}
             viewAllGroups={() => this.viewAllGroups()}
             isTaskLocked={id => this.isTaskLocked(id)}

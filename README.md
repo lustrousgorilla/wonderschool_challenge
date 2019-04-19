@@ -6,10 +6,8 @@
 #### Start the application: `yarn install`, `yarn run`, and then navigate to `localhost:3000`
 
 Note: the desired behavior is unspecified for the case where a task's dependency is completed, 
-the task is completed, and then the dependency is subsequently unchecked. Currently this puts the app
-in an invalid state. 
-
-Question: Should unchecking the dependency be disallowed until the task is first unchecked? Or should unchecking the dependency also uncheck and re-lock the task?
+the task is checked, and then the dependency is subsequently unchecked. In this implementation,
+when a parent task is unchecked all dependent tasks will be unchecked and re-locked.
 
 ## 2. SQL Schema
 ```SQL
